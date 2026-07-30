@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Queue Status</title>
+
+    <link rel="stylesheet" href="/css/style.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Live Queue Status</h1>
+
+    <div class="card">
+
+        <h2 id="token">Token : -</h2>
+
+        <h3 id="position">Queue Position : -</h3>
+
+        <h3 id="waiting">Estimated Waiting : -</h3>
+
+        <h3 id="status">Status : -</h3>
+
+        <button onclick="loadQueueStatus()">
+            Refresh
+        </button>
+
+        <button onclick="window.location.href='/pages/patient-dashboard.html'">
+            Dashboard
+        </button>
+
+    </div>
+
+</div>
+
+<script src="/js/queue-status.js"></script>
+
+</body>
+
+</html>

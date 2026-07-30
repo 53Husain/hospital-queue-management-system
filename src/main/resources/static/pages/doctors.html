@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Doctors</title>
+
+    <link rel="stylesheet"
+          href="/css/style.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Available Doctors</h1>
+
+    <input
+            id="search"
+            type="text"
+            placeholder="Search doctor..."
+            onkeyup="filterDoctors()">
+
+    <div id="doctorList">
+
+    </div>
+
+    <button onclick="window.location.href='/pages/patient-dashboard.html'">
+
+        Back
+
+    </button>
+
+</div>
+
+<script src="/js/doctors.js"></script>
+
+</body>
+
+</html>
