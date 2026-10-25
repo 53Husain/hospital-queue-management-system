@@ -1,49 +1,37 @@
 # Smart Hospital Queue Management System
 
-A Java backend and Bootstrap frontend for demonstrating patient registration, doctor queues, appointments, and admin dashboard statistics. Built with **Java 21, Spring Boot 3.5.4, Spring Data JPA, and MySQL**.
+A Java backend and Bootstrap frontend demonstrating patient registration, doctor queues, appointments, and admin dashboard statistics. Built with **Java 21, Spring Boot 3.5.4, Spring Data JPA, and MySQL**.
 
-**Status:** a local learning/demo application. Login provides role information and dashboard routing, but the current backend permits all requests and stores passwords as plain text. Use synthetic data and demo-only passwords; this implementation is not ready for real patient information or public deployment.
+**Status:** a learning/demo application with BCrypt password hashing, server-side session authentication, CSRF protection, and role/record-ownership checks. These controls do not make this a production healthcare system. Use synthetic patient data; operational security, privacy requirements, and concurrency behavior need further work.
 
-## Features Present in the Source
+## Implemented Capabilities
 
-- Registration and login with PATIENT, DOCTOR, and ADMIN role values.
-- Patient workflows: list doctors, book appointments, view appointment history/status, and update a profile.
-- Doctor workflows: view the queue, call the next patient, and complete appointments.
+- Public patient registration; only authenticated administrators can create doctor/admin accounts.
+- Login establishes an HTTP session with an HttpOnly cookie. Logout invalidates the session.
+- Patients can list doctors and book/read appointments or update profiles belonging to themselves.
+- Doctors can view and operate their own queue, and read/complete appointments assigned to them.
+- Administrators can view aggregate counts and provision staff. They do not automatically receive access to patient profiles or doctor queue operations.
 - Priority ordering: EMERGENCY before NORMAL, then ascending token number.
 - Doctor dashboard refresh through HTTP polling every five seconds.
-- Admin dashboard counts for patients, doctors, all appointments, completed/booked appointments, and emergency appointments.
-- Static HTML/CSS/JavaScript pages served by Spring Boot.
-
-These are application workflows, not a claim of enforced role-based API authorization.
+- Static HTML/CSS/JavaScript pages served by Spring Boot, using same-origin API URLs.
 
 ## Architecture and Source Guide
 
-Requests pass from REST controllers through service implementations to Spring Data JPA repositories and MySQL.
+Requests pass through Spring Security filters, controller ownership checks, services, JPA repositories, and the database.
 
 | Source | Responsibility |
 | --- | --- |
 | [HospitalQueueApplication.java](src/main/java/com/shqms/HospitalQueueApplication.java) | Spring Boot entry point |
-| [controller/](src/main/java/com/shqms/controller) | HTTP routes |
+| [SecurityConfig.java](src/main/java/com/shqms/config/SecurityConfig.java) | API authentication, admin restriction, session persistence, CSRF and logout |
+| [RecordAccess.java](src/main/java/com/shqms/config/RecordAccess.java) | Database-backed patient/doctor ownership checks |
+| [AdminBootstrap.java](src/main/java/com/shqms/config/AdminBootstrap.java) | Optional creation of the first administrator |
+| [controller/](src/main/java/com/shqms/controller) | HTTP routes and method authorization |
 | [service/impl/](src/main/java/com/shqms/service/impl) | Registration, appointments, queues, profiles, and dashboard logic |
 | [repository/](src/main/java/com/shqms/repository) | Database access |
 | [entity/](src/main/java/com/shqms/entity) | User, Patient, Doctor, Hospital, and Appointment entities |
-| [dto/](src/main/java/com/shqms/dto) | Request and response objects |
 | [QueueManager.java](src/main/java/com/shqms/dsa/queue/QueueManager.java) | PriorityQueue and appointment comparator |
-| [SecurityConfig.java](src/main/java/com/shqms/config/SecurityConfig.java) | Current permissive security configuration |
-| [static/](src/main/resources/static) | Browser pages and assets |
-| [application.properties](src/main/resources/application.properties) | Database, Hibernate, and server settings |
-
-The Maven project includes Spring Web, JPA, Security, Validation, MySQL Connector/J, Lombok, DevTools, and test dependencies. Declaring test dependencies does not mean tests have been implemented.
-
-## Queue Behavior
-
-The queue service rebuilds a Java `PriorityQueue` from database appointments for each queue operation. Emergency appointments precede normal appointments; token numbers break ties within the same priority.
-
-Calling the next patient selects a BOOKED appointment and changes it to IN_PROGRESS. The service first checks whether that doctor already has an IN_PROGRESS appointment. The queue-list endpoint includes BOOKED and IN_PROGRESS appointments; the position endpoint considers only BOOKED appointments and returns `-1` when the requested appointment is not in that waiting set.
-
-Completion sets the selected appointment to COMPLETED without validating that it was previously IN_PROGRESS.
-
-Booking assigns a token using the doctor's total appointment count plus one. The estimated wait is that count multiplied by 15 minutes, including historical appointments. It is an initial estimate, not a continuously recalculated waiting time. Concurrent booking/call-next requests are not protected by explicit locking in these service methods.
+| [api.js](src/main/resources/static/js/api.js) | Session-aware requests, CSRF headers, logout and HTML escaping |
+| [application.properties](src/main/resources/application.properties) | Database and server settings |
 
 ## Local Setup
 
@@ -66,33 +54,56 @@ Create a local demo database with your database administration account:
 CREATE DATABASE IF NOT EXISTS hospital_queue_db;
 ```
 
-Set your own credentials in the terminal that will launch the application. These environment variables override the committed properties.
+Set credentials in the terminal that launches the application. No database password is supplied by default.
 
-**PowerShell:**
+PowerShell:
 
 ```powershell
 $env:SPRING_DATASOURCE_USERNAME = 'YOUR_LOCAL_MYSQL_USER'
 $env:SPRING_DATASOURCE_PASSWORD = 'YOUR_LOCAL_MYSQL_PASSWORD'
 ```
 
-**Bash:**
+Bash:
 
 ```bash
 export SPRING_DATASOURCE_USERNAME='YOUR_LOCAL_MYSQL_USER'
 export SPRING_DATASOURCE_PASSWORD='YOUR_LOCAL_MYSQL_PASSWORD'
 ```
 
-Replace the example values locally. The account needs permission to create/update the demo tables because `spring.jpa.hibernate.ddl-auto=update` is enabled.
+Replace those values locally. `DB_PASSWORD` is also supported as the password fallback. The account needs table-creation/update permissions because `spring.jpa.hibernate.ddl-auto=update` is enabled. The default URL is `jdbc:mysql://localhost:3306/hospital_queue_db`; override it with `SPRING_DATASOURCE_URL` if needed. Do not commit working credentials.
 
-The committed URL is `jdbc:mysql://localhost:3306/hospital_queue_db`; override it with `SPRING_DATASOURCE_URL` if necessary. The configuration contains a literal password: override it locally and do not commit working credentials. Whether that value was ever an active credential is not established by the repository.
+### 3. Provision the first administrator (optional)
 
-### 3. Run
+Patient registration works without an administrator, but creating doctors requires one. On a database without an ADMIN user, explicitly enable bootstrap for one startup:
+
+PowerShell:
+
+```powershell
+$env:APP_BOOTSTRAP_ADMIN_ENABLED = 'true'
+$env:APP_BOOTSTRAP_ADMIN_EMAIL = 'admin@example.com'
+$env:APP_BOOTSTRAP_ADMIN_PASSWORD = 'REPLACE_WITH_A_UNIQUE_PASSWORD'
+mvn spring-boot:run
+```
+
+Bash:
+
+```bash
+export APP_BOOTSTRAP_ADMIN_ENABLED=true
+export APP_BOOTSTRAP_ADMIN_EMAIL='admin@example.com'
+read -rs -p 'New admin password: ' APP_BOOTSTRAP_ADMIN_PASSWORD; echo
+export APP_BOOTSTRAP_ADMIN_PASSWORD
+mvn spring-boot:run
+```
+
+Use your own email and a unique password of at least 12 characters and at most 72 UTF-8 bytes. Bootstrap hashes the password, does nothing when an ADMIN already exists, and refuses to promote an existing non-admin email. It never resets existing passwords. Run this initialization with one application instance. Stop the application after initialization and remove all three bootstrap variables before normal startup.
+
+### 4. Run
 
 ```sh
 mvn spring-boot:run
 ```
 
-Alternatively, package and launch with the same environment variables:
+Or package and launch with the same database environment variables:
 
 ```sh
 mvn clean package
@@ -101,20 +112,23 @@ java -jar target/hospital-queue-management-system-0.0.1-SNAPSHOT.jar
 
 | Local URL | Purpose |
 | --- | --- |
-| `http://localhost:8080/` | Plain-text “Hospital Queue Management System is running!” response |
-| `http://localhost:8080/index.html` | Static landing page |
-| `http://localhost:8080/pages/register.html` | Registration page |
-| `http://localhost:8080/pages/login.html` | Login page |
+| `http://localhost:8080/` | Plain-text application-running response |
+| `http://localhost:8080/index.html` | Landing page |
+| `http://localhost:8080/pages/register.html` | Patient registration |
+| `http://localhost:8080/pages/login.html` | Login for all roles |
 
-The root controller handles `/`, so use the explicit page URLs to open the frontend. Several scripts hard-code `http://localhost:8080`; changing the port or hosting remotely requires frontend changes too.
+The root controller handles `/`, so use the explicit page URLs for the frontend. Static pages are public; the APIs enforce access control. The browser's stored IDs and role only support display/navigation and cannot authorize an API request.
 
-### 4. Create demo accounts
+### 5. Register, log in, and exercise the demo
 
-No seed data or preconfigured application credentials are present in the inspected tree. Register a demo patient and doctor, then sign in using your supplied credentials.
+Register a patient in the browser, then log in. For API clients, preserve cookies between requests and:
 
-Registration accepts `fullName`, `email`, `password`, `phoneNumber`, and `role`. PATIENT registration creates a Patient record. DOCTOR registration creates a Doctor record with empty specialization and zero experience/rating.
+1. Call `GET /api/auth/csrf`. Read `headerName` and `token` from its JSON response.
+2. Send that header and session cookie on `POST /api/auth/register` or `/api/auth/login`.
+3. After login, preserve the **new session cookie** and fetch `/api/auth/csrf` again. Login invalidates the old session and its CSRF token.
+4. Include the current CSRF header on every POST, PUT, PATCH, and DELETE request, including logout. GET requests still need authentication except the public pages and CSRF endpoint.
 
-Example JSON for `POST /api/auth/register`—sample values, not an existing account:
+Patient registration body (sample values, not an existing account):
 
 ```json
 {
@@ -126,9 +140,9 @@ Example JSON for `POST /api/auth/register`—sample values, not an existing acco
 }
 ```
 
-Use a different email and `"role": "DOCTOR"` for the doctor. The service also accepts ADMIN directly; there is currently no protected administrator-provisioning flow.
+Public registration rejects non-patient roles. The role may also be omitted for patient registration. Name/email/password are validated; passwords must contain at least 12 characters and fit within BCrypt's 72-byte limit.
 
-Example body for `POST /api/auth/login`:
+Login body:
 
 ```json
 {
@@ -137,78 +151,68 @@ Example body for `POST /api/auth/login`:
 }
 ```
 
-Login returns `userId`, `patientId`, `doctorId`, `fullName`, `role`, and `message`. It does not issue a JWT or establish an application-authenticated session. Use IDs returned by your own database rather than assuming they are 1.
+Login returns `userId`, `patientId`, `doctorId`, `fullName`, `role`, and `message`, and establishes the session. It does not issue a JWT.
 
-### 5. Exercise the demo
+To create a doctor, log in as the bootstrapped administrator in an API client. POST the registration fields with a new email and `"role": "DOCTOR"` to `/api/admin/users`, including cookies and CSRF header. `"role": "ADMIN"` creates another administrator. This endpoint has no administration form yet. A new doctor has empty specialization and zero experience/rating.
 
-1. Register patient and doctor accounts, then log in.
-2. List doctors through `GET /api/doctors`.
-3. Submit `POST /api/appointments` with real patient/doctor IDs:
+Then use separate patient and doctor sessions (separate browser profiles or cookie jars):
 
-```json
-{
-  "patientId": 1,
-  "doctorId": 1,
-  "priority": "NORMAL"
-}
+1. As the patient, list doctors with `GET /api/doctors` and book from the patient dashboard.
+2. An API booking uses `POST /api/appointments` with the logged-in patient's `patientId`, a real `doctorId`, and `priority` (`NORMAL` or `EMERGENCY`). Another patient's ID is rejected.
+3. As the assigned doctor, read `/api/queue/{doctorId}`, POST `/api/queue/next/{doctorId}`, then PUT `/api/queue/complete/{appointmentId}`.
+4. As the administrator, read `/api/admin/dashboard` for aggregate counts.
+5. POST `/api/auth/logout` to end the session. Clearing browser storage alone does not log out.
+
+## REST API and Access Rules
+
+| Method | Endpoint | Access |
+| --- | --- | --- |
+| GET | `/api/auth/csrf` | Public; obtains a session CSRF token |
+| POST | `/api/auth/register` | Public, CSRF required; patient registration only |
+| POST | `/api/auth/login` | Public, CSRF required; establishes session |
+| POST | `/api/auth/logout` | CSRF required; invalidates session |
+| POST | `/api/admin/users` | ADMIN; create DOCTOR or ADMIN |
+| GET | `/api/admin/dashboard` | ADMIN; aggregate dashboard counts |
+| GET | `/api/doctors` | Any authenticated user |
+| POST | `/api/appointments` | PATIENT; own patient ID only |
+| GET | `/api/appointments` | Any authenticated user; diagnostic string only |
+| GET | `/api/appointments/{id}` | Owning patient or assigned doctor |
+| GET | `/api/appointments/patient/{patientId}` | Owning patient |
+| GET | `/api/queue/{doctorId}` | Owning doctor |
+| POST | `/api/queue/next/{doctorId}` | Owning doctor |
+| GET | `/api/queue/position/{appointmentId}` | Owning patient or assigned doctor |
+| PUT | `/api/queue/complete/{appointmentId}` | Assigned doctor |
+| GET / PUT | `/api/patient/profile/{patientId}` | Owning patient |
+
+Unauthenticated protected requests return 401; missing/invalid CSRF or forbidden access returns 403. Authentication validation failures return 400, duplicate registration email returns 409, and invalid credentials return a generic 401 message. Other business-error responses are not yet standardized.
+
+## Existing Accounts and Deployment Changes
+
+- **Plaintext passwords no longer work.** There is deliberately no plaintext fallback or automatic migration. Existing accounts need administrator-controlled offline replacement with BCrypt hashes of newly chosen passwords, or fresh demo accounts with different emails. No reset/recovery UI is implemented. Bootstrap does not reset an existing administrator, so an existing plaintext ADMIN also requires offline recovery. Back up an existing database before any manual migration; do not delete patient records to resolve authentication.
+- Session timeout is 30 minutes of inactivity. Sessions are server-side and are lost on restart; roles are captured at login. After manually changing roles or credentials, invalidate existing sessions (restart this single-instance demo) before relying on the new permissions.
+- For HTTPS hosting, set `SESSION_COOKIE_SECURE=true`. The default is false for local HTTP development. SameSite=Lax and HttpOnly are configured. Cross-origin browser access is not enabled.
+- The old committed database password has been removed from current configuration; history still contains the old value. Whether it was ever a live credential cannot be established from this repository.
+
+## Queue Behavior and Remaining Limitations
+
+The queue service rebuilds a Java `PriorityQueue` from database appointments for each operation. Calling next selects a BOOKED appointment and sets it to IN_PROGRESS after checking for an existing consultation. Queue lists include BOOKED and IN_PROGRESS; position considers BOOKED only and returns `-1` for appointments outside that set.
+
+Completion still sets COMPLETED without checking the prior status. Tokens use the doctor's historical appointment count plus one; estimated wait uses that count multiplied by 15 minutes. Concurrent booking/call-next requests have no explicit locking. These scheduling issues are separate from the authentication changes.
+
+The doctor dashboard polls every five seconds; this is not WebSocket push. The separate queue-status script loads once. The separate book-appointment page still references an empty `book.js`; use the patient dashboard's booking controls. Broader request validation, rate limiting, password recovery, database migrations, and production deployment hardening remain future work.
+
+## Tests and Verification
+
+```sh
+mvn clean verify
+node --test src/test/js/*.test.cjs
 ```
 
-The IDs are illustrative. Valid priority values are NORMAL and EMERGENCY.
+Java integration tests start Spring Boot with the real security filters, controllers, services and JPA repositories, using an isolated **H2 database in MySQL mode**. They cover password hashing, patient-only registration, privileged staff creation, validation, bad/legacy credentials, CSRF, session rotation/logout, patient ownership, and doctor assignment. Bootstrap tests cover first-admin behavior. Browser-helper tests use Node's test runner and mocked HTTP responses; they are not a rendered-browser end-to-end test.
 
-4. View `GET /api/queue/{doctorId}`.
-5. Call `POST /api/queue/next/{doctorId}`.
-6. Complete the selected appointment using `PUT /api/queue/complete/{appointmentId}`.
-7. Read `GET /api/admin/dashboard` for counts.
+[Java CI](.github/workflows/ci.yml) runs Java 21 Maven verification/packaging and browser-helper tests on pushes and pull requests. H2 does not establish MySQL-specific behavior or production readiness. A live MySQL/browser deployment has not been verified in this update.
 
-This is a source-derived manual checklist, not a recorded end-to-end test.
-
-## REST API Reference
-
-Base URL: `http://localhost:8080`. Methods and paths match the controller annotations.
-
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| POST | `/api/auth/register` | Register; returns a plain-text message |
-| POST | `/api/auth/login` | Check credentials and return identity/role information |
-| GET | `/api/doctors` | List doctors |
-| POST | `/api/appointments` | Book an appointment |
-| GET | `/api/appointments` | Diagnostic string, not an appointment list |
-| GET | `/api/appointments/{id}` | Read an appointment |
-| GET | `/api/appointments/patient/{patientId}` | List a patient's appointments |
-| GET | `/api/queue/{doctorId}` | Read the doctor's queue |
-| POST | `/api/queue/next/{doctorId}` | Call the next patient |
-| GET | `/api/queue/position/{appointmentId}` | Read waiting-queue position |
-| PUT | `/api/queue/complete/{appointmentId}` | Mark an appointment completed |
-| GET / PUT | `/api/patient/profile/{patientId}` | Read or update a patient profile |
-| GET | `/api/admin/dashboard` | Dashboard counts |
-
-The previous README's `PUT /api/queue/call-next/{doctorId}` and `GET /api/admin/analytics` do not match the current controllers; use the routes above.
-
-## Current Limitations and Verification
-
-- **Authorization:** `SecurityConfig` uses `anyRequest().permitAll()` and disables CSRF. Spring Security already exists as a dependency/configuration, but role-based API restrictions are not enforced.
-- **Passwords:** the registration/login service stores and compares plain-text passwords.
-- **Client state:** login saves IDs and roles in `localStorage` for dashboard routing. Those values do not secure endpoints or establish record ownership.
-- **Validation:** the auth/appointment controllers do not use `@Valid`, and their inspected request DTOs lack validation constraints. Generic runtime exceptions are used instead of a consistent application error contract.
-- **Refresh:** the doctor dashboard polls every five seconds; it is not WebSocket push. The queue-status script loads once when invoked.
-- **Scheduling:** token allocation, waiting estimates, and appointment transitions have the limitations described in Queue Behavior.
-- **Verification:** no automated tests, CI workflow, seed scripts, or migration scripts are present in the inspected tree. This README was checked against source/configuration; a Java 21/MySQL build and live end-to-end run were not performed for this documentation update.
-- **Screenshots:** the existing images below are retained from the repository; they were not regenerated or independently verified in this update.
-
-## Future Improvements
-
-These are proposed work, not completed features:
-
-- Password hashing and authenticated sessions or tokens.
-- Server-side role/ownership checks and controlled doctor/admin provisioning.
-- Request validation and consistent HTTP errors.
-- Concurrency-safe token allocation and appointment transitions.
-- Better waiting estimates and doctor scheduling.
-- Automated unit/integration tests and CI.
-- Environment-based configuration and removal of hard-coded frontend API origins.
-- Doctor filtering and optional notifications.
-
-A basic admin dashboard already exists; expanded administration would be additional work.
+The screenshots below are historical repository images, retained without regeneration. In particular, registration now permits only patients; the old role selector is no longer present.
 
 ---
 

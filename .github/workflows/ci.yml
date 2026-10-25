@@ -14,6 +14,8 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: Test browser request helper
+        run: node --test src/test/js/*.test.cjs
       - name: Test and package
         run: mvn --batch-mode --no-transfer-progress clean verify
       - name: Upload test reports
