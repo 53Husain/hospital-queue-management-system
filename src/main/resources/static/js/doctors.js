@@ -3,8 +3,8 @@ let doctors=[];
 async function loadDoctors(){
 
     const response=
-    await fetch(
-        "http://localhost:8080/api/doctors"
+    await apiFetch(
+        "/api/doctors"
     );
 
     doctors=
@@ -25,14 +25,14 @@ function displayDoctors(list){
 <div class="card">
 
 <h2>
-👨‍⚕️ ${d.user.fullName}
+👨‍⚕️ ${escapeHtml(d.name)}
 </h2>
 
 <p>
 
 <b>Specialization :</b>
 
-${d.specialization}
+${escapeHtml(d.specialization)}
 
 </p>
 
@@ -77,7 +77,7 @@ function filterDoctors(){
     const filtered=
     doctors.filter(d=>
 
-        d.user.fullName
+        d.name
         .toLowerCase()
         .includes(text)
 

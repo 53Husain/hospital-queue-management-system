@@ -1,19 +1,13 @@
-document.getElementById("username").innerHTML =
+document.getElementById("username").textContent =
 localStorage.getItem("name");
 
 loadDoctors();
 loadAppointments();
-function logout(){
 
-    localStorage.clear();
-
-    window.location.href="/pages/login.html";
-
-}
 
 function loadDoctors(){
 
-    fetch("/api/doctors")
+    apiFetch("/api/doctors")
 
         .then(res=>res.json())
 
@@ -27,9 +21,9 @@ function loadDoctors(){
 
 <tr>
 
-<td>${doctor.name}</td>
+<td>${escapeHtml(doctor.name)}</td>
 
-<td>${doctor.specialization}</td>
+<td>${escapeHtml(doctor.specialization)}</td>
 
 <td>${doctor.experience} Years</td>
 
@@ -76,7 +70,7 @@ function bookAppointment(doctorId) {
         return;
     }
 
-    fetch("/api/appointments", {
+    apiFetch("/api/appointments", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -114,7 +108,7 @@ function loadAppointments() {
 
     const patientId = localStorage.getItem("patientId");
 
-    fetch("/api/appointments/patient/" + patientId)
+    apiFetch("/api/appointments/patient/" + patientId)
 
         .then(res => res.json())
 
@@ -130,13 +124,13 @@ function loadAppointments() {
 
 <td>${app.tokenNumber}</td>
 
-<td>${app.doctorName}</td>
+<td>${escapeHtml(app.doctorName)}</td>
 
-<td>${app.priority}</td>
+<td>${escapeHtml(app.priority)}</td>
 
 <td>${app.estimatedWaitingTime} mins</td>
 
-<td>${app.status}</td>
+<td>${escapeHtml(app.status)}</td>
 
 </tr>
 
@@ -151,3 +145,4 @@ function loadAppointments() {
 }
 
 setInterval(loadDoctors, 5000);
+

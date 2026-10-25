@@ -1,4 +1,4 @@
-document.getElementById("username").innerHTML =
+document.getElementById("username").textContent =
     localStorage.getItem("name");
 
 const patientId = localStorage.getItem("patientId");
@@ -12,13 +12,7 @@ loadAppointments();
 
 setInterval(loadAppointments, 5000);
 
-function logout() {
 
-    localStorage.clear();
-
-    window.location.href = "/pages/login.html";
-
-}
 
 function loadAppointments() {
 
@@ -26,7 +20,7 @@ function loadAppointments() {
 
     console.log("Patient ID:", patientId);
 
-    fetch("/api/appointments/patient/" + patientId)
+    apiFetch("/api/appointments/patient/" + patientId)
 
         .then(async res => {
 
@@ -53,11 +47,11 @@ function loadAppointments() {
                 table += `
                 <tr>
                     <td>${appointment.appointmentId}</td>
-                    <td>${appointment.doctorName}</td>
-                    <td>${appointment.priority}</td>
+                    <td>${escapeHtml(appointment.doctorName)}</td>
+                    <td>${escapeHtml(appointment.priority)}</td>
                     <td>${appointment.tokenNumber}</td>
                     <td>${appointment.estimatedWaitingTime} mins</td>
-                    <td>${appointment.status}</td>
+                    <td>${escapeHtml(appointment.status)}</td>
                 </tr>`;
             });
 

@@ -9,13 +9,13 @@ document
             email: document.getElementById("email").value,
             phoneNumber: document.getElementById("phone").value,
             password: document.getElementById("password").value,
-            role: document.getElementById("role").value
+            role: "PATIENT"
         };
 
         try {
 
-            const response = await fetch(
-                "http://localhost:8080/api/auth/register",
+            const response = await apiFetch(
+                "/api/auth/register",
                 {
                     method: "POST",
                     headers: {

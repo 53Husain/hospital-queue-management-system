@@ -5,6 +5,7 @@ import com.shqms.dto.response.AppointmentDetailsResponse;
 import com.shqms.dto.response.AppointmentResponse;
 import com.shqms.service.AppointmentService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class AppointmentController {
     }
 
     @PostMapping
+    @PreAuthorize("@recordAccess.patient(authentication, #request.patientId)")
     public ResponseEntity<AppointmentResponse>
     bookAppointment(
             @RequestBody
@@ -32,6 +34,7 @@ public class AppointmentController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@recordAccess.appointment(authentication, #id)")
     public ResponseEntity<AppointmentResponse> getAppointment(
             @PathVariable Long id) {
 
@@ -47,6 +50,7 @@ public class AppointmentController {
     }
 
     @GetMapping("/patient/{patientId}")
+    @PreAuthorize("@recordAccess.patient(authentication, #patientId)")
     public ResponseEntity<List<AppointmentDetailsResponse>> getAppointments(
             @PathVariable Long patientId) {
 

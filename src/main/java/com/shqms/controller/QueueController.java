@@ -4,6 +4,7 @@ import com.shqms.dto.response.QueueEntryResponse;
 import com.shqms.dto.response.QueueResponse;
 import com.shqms.service.QueueService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,6 +20,7 @@ public class QueueController {
     }
 
     @PostMapping("/next/{doctorId}")
+    @PreAuthorize("@recordAccess.doctor(authentication, #doctorId)")
     public ResponseEntity<QueueResponse> callNextPatient(
             @PathVariable Long doctorId) {
 
@@ -28,6 +30,7 @@ public class QueueController {
     }
 
     @GetMapping("/{doctorId}")
+    @PreAuthorize("@recordAccess.doctor(authentication, #doctorId)")
     public ResponseEntity<List<QueueEntryResponse>> getQueue(
             @PathVariable Long doctorId) {
 
@@ -37,6 +40,7 @@ public class QueueController {
     }
 
     @GetMapping("/position/{appointmentId}")
+    @PreAuthorize("@recordAccess.appointment(authentication, #appointmentId)")
     public ResponseEntity<Integer> getPosition(
             @PathVariable Long appointmentId) {
 
@@ -46,6 +50,7 @@ public class QueueController {
     }
 
     @PutMapping("/complete/{appointmentId}")
+    @PreAuthorize("@recordAccess.manageAppointment(authentication, #appointmentId)")
     public ResponseEntity<String> completeAppointment(
             @PathVariable Long appointmentId) {
 

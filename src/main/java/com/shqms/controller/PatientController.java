@@ -4,6 +4,7 @@ import com.shqms.dto.request.UpdateProfileRequest;
 import com.shqms.dto.response.ProfileResponse;
 import com.shqms.service.PatientService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,6 +20,7 @@ public class PatientController {
     }
 
     @GetMapping("/profile/{patientId}")
+    @PreAuthorize("@recordAccess.patient(authentication, #patientId)")
     public ResponseEntity<ProfileResponse>
     getProfile(
             @PathVariable Long patientId) {
@@ -29,6 +31,7 @@ public class PatientController {
     }
 
     @PutMapping("/profile/{patientId}")
+    @PreAuthorize("@recordAccess.patient(authentication, #patientId)")
     public ResponseEntity<String>
     updateProfile(
             @PathVariable Long patientId,

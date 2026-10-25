@@ -10,16 +10,16 @@ async function loadQueueStatus() {
     }
 
     const positionResponse =
-        await fetch(
-            "http://localhost:8080/api/queue/position/" + appointmentId
+        await apiFetch(
+            "/api/queue/position/" + appointmentId
         );
 
     const position =
         await positionResponse.json();
 
     const appointmentResponse =
-        await fetch(
-            "http://localhost:8080/api/appointments/" + appointmentId
+        await apiFetch(
+            "/api/appointments/" + appointmentId
         );
 
     const appointment =

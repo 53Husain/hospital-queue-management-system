@@ -4,7 +4,7 @@ loadProfile();
 
 function loadProfile() {
 
-    fetch("/api/patient/profile/" + patientId)
+    apiFetch("/api/patient/profile/" + patientId)
 
         .then(res => res.json())
 
@@ -50,7 +50,7 @@ function updateProfile() {
 
     };
 
-    fetch("/api/patient/profile/" + patientId, {
+    apiFetch("/api/patient/profile/" + patientId, {
 
         method: "PUT",
 

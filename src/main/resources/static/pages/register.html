@@ -54,27 +54,12 @@
                 <input
                         type="password"
                         id="password"
+                        minlength="12" maxlength="72"
                         class="form-control"
                         required>
             </div>
 
-            <div class="mb-3">
-                <label>Role</label>
-
-                <select
-                        id="role"
-                        class="form-select">
-
-                    <option value="PATIENT">
-                        Patient
-                    </option>
-
-                    <option value="DOCTOR">
-                        Doctor
-                    </option>
-
-                </select>
-            </div>
+            <p>Patient registration. Staff accounts are created by an administrator.</p>
 
             <button
                     class="btn btn-success w-100">
@@ -93,6 +78,7 @@
 
 </div>
 
+<script src="/js/api.js"></script>
 <script src="/js/register.js"></script>
 
 </body>

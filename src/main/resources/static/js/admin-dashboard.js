@@ -1,16 +1,10 @@
 loadDashboard();
 
-function logout() {
 
-    localStorage.clear();
-
-    window.location.href = "/pages/login.html";
-
-}
 
 function loadDashboard() {
 
-    fetch("/api/admin/dashboard")
+    apiFetch("/api/admin/dashboard")
 
         .then(res => res.json())
 

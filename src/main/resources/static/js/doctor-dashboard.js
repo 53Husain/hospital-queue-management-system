@@ -1,21 +1,15 @@
-document.getElementById("doctorName").innerHTML =
+document.getElementById("doctorName").textContent =
 localStorage.getItem("name");
 
 loadQueue();
 
-function logout(){
 
-    localStorage.clear();
-
-    window.location.href="/pages/login.html";
-
-}
 
 function loadQueue() {
 
     const doctorId = localStorage.getItem("doctorId");
 
-    fetch("/api/queue/" + doctorId)
+    apiFetch("/api/queue/" + doctorId)
 
         .then(res => res.json())
 
@@ -31,11 +25,11 @@ function loadQueue() {
 
 <td>${patient.tokenNumber}</td>
 
-<td>${patient.patientName}</td>
+<td>${escapeHtml(patient.patientName)}</td>
 
-<td>${patient.priority}</td>
+<td>${escapeHtml(patient.priority)}</td>
 
-<td>${patient.status}</td>
+<td>${escapeHtml(patient.status)}</td>
 
 <td>
 
@@ -65,7 +59,7 @@ function callNextPatient(){
 
     const doctorId=localStorage.getItem("doctorId");
 
-    fetch("/api/queue/next/"+doctorId,{
+    apiFetch("/api/queue/next/"+doctorId,{
 
         method:"POST"
 
@@ -91,7 +85,7 @@ function callNextPatient(){
 
 function completeAppointment(appointmentId) {
 
-    fetch("/api/queue/complete/" + appointmentId, {
+    apiFetch("/api/queue/complete/" + appointmentId, {
 
         method: "PUT"
 
