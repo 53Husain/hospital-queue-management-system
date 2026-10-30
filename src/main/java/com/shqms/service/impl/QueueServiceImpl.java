@@ -88,6 +88,7 @@ public class QueueServiceImpl implements QueueService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<QueueEntryResponse> getQueue(Long doctorId) {
 
         List<Appointment> appointments =
@@ -127,6 +128,7 @@ public class QueueServiceImpl implements QueueService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public int getQueuePosition(Long appointmentId) {
 
         Appointment appointment =

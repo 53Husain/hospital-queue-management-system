@@ -96,6 +96,7 @@ public class AppointmentServiceImpl
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AppointmentDetailsResponse> getAppointments(Long patientId) {
 
         List<Appointment> appointments =
@@ -135,6 +136,7 @@ public class AppointmentServiceImpl
         return response;
     }
     @Override
+    @Transactional(readOnly = true)
     public AppointmentResponse getAppointment(Long id) {
 
         Appointment appointment = appointmentRepository.findById(id)

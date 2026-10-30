@@ -31,11 +31,13 @@ public class Appointment {
     @Enumerated(EnumType.STRING)
     private PriorityType priority;
 
-    @ManyToOne
+    // Keep appointment locking reads from joining and locking shared records.
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_id")
     private Patient patient;
 
-    @ManyToOne
+    // Keep appointment locking reads from joining and locking shared records.
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "doctor_id")
     private Doctor doctor;
 
