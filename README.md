@@ -1,5 +1,7 @@
 # Smart Hospital Queue Management System
 
+**Quick start:** [Local MySQL with Docker Compose + Maven Wrapper](docs/local-setup.md) · [Postman API examples](docs/api-examples.md)
+
 A Java backend and Bootstrap frontend demonstrating patient registration, doctor queues, appointments, and admin dashboard statistics. Built with **Java 21, Spring Boot 3.5.4, Spring Data JPA, and MySQL**.
 
 **Status:** a learning/demo application with BCrypt password hashing, server-side session authentication, CSRF protection, and role/record-ownership checks. These controls do not make this a production healthcare system. Use synthetic patient data; operational security, privacy requirements, and deployment hardening need further work.
@@ -37,13 +39,13 @@ Requests pass through Spring Security filters, controller ownership checks, serv
 
 ### 1. Prerequisites and clone
 
-Install **JDK 21**, Maven, Git, and a running MySQL server. No Maven wrapper is included.
+Install **JDK 21**, Git, and a running MySQL server. A Maven wrapper is included.
 
 ```sh
 git clone https://github.com/53Husain/hospital-queue-management-system.git
 cd hospital-queue-management-system
 java -version
-mvn -version
+./mvnw -version
 ```
 
 ### 2. Configure MySQL
@@ -79,20 +81,20 @@ Patient registration works without an administrator, but creating doctors requir
 PowerShell:
 
 ```powershell
-$env:APP_BOOTSTRAP_ADMIN_ENABLED = 'true'
-$env:APP_BOOTSTRAP_ADMIN_EMAIL = 'admin@example.com'
-$env:APP_BOOTSTRAP_ADMIN_PASSWORD = 'REPLACE_WITH_A_UNIQUE_PASSWORD'
-mvn spring-boot:run
+$env:APP_BOOTSTRAPADMIN_ENABLED = 'true'
+$env:APP_BOOTSTRAPADMIN_EMAIL = 'admin@example.com'
+$env:APP_BOOTSTRAPADMIN_PASSWORD = 'REPLACE_WITH_A_UNIQUE_PASSWORD'
+./mvnw spring-boot:run
 ```
 
 Bash:
 
 ```bash
-export APP_BOOTSTRAP_ADMIN_ENABLED=true
-export APP_BOOTSTRAP_ADMIN_EMAIL='admin@example.com'
-read -rs -p 'New admin password: ' APP_BOOTSTRAP_ADMIN_PASSWORD; echo
-export APP_BOOTSTRAP_ADMIN_PASSWORD
-mvn spring-boot:run
+export APP_BOOTSTRAPADMIN_ENABLED=true
+export APP_BOOTSTRAPADMIN_EMAIL='admin@example.com'
+read -rs -p 'New admin password: ' APP_BOOTSTRAPADMIN_PASSWORD; echo
+export APP_BOOTSTRAPADMIN_PASSWORD
+./mvnw spring-boot:run
 ```
 
 Use your own email and a unique password of at least 12 characters and at most 72 UTF-8 bytes. Bootstrap hashes the password, does nothing when an ADMIN already exists, and refuses to promote an existing non-admin email. It never resets existing passwords. Run this initialization with one application instance. Stop the application after initialization and remove all three bootstrap variables before normal startup.
@@ -100,13 +102,13 @@ Use your own email and a unique password of at least 12 characters and at most 7
 ### 4. Run
 
 ```sh
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 Or package and launch with the same database environment variables:
 
 ```sh
-mvn clean package
+./mvnw clean package
 java -jar target/hospital-queue-management-system-0.0.1-SNAPSHOT.jar
 ```
 
@@ -211,9 +213,9 @@ JDK 21 and Maven are required. The full verification additionally requires Docke
 
 ```sh
 # H2 authentication/ownership and bootstrap tests; no Docker required
-mvn test
+./mvnw test
 # Includes MySQL concurrency integration tests and packaging
-mvn clean verify
+./mvnw clean verify
 # Mocked DOM/HTTP tests for request helper, booking and doctor dashboard
 node --test src/test/js/*.test.cjs
 ```

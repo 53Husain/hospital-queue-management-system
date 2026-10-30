@@ -1,0 +1,203 @@
+{
+  "info": {
+    "name": "Hospital patient booking",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Uses the Postman cookie jar and explicit CSRF refresh. Provision a doctor first; set doctorId from list results. Do not run booking with an empty doctorId."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "patientEmail",
+      "value": "demo-patient@example.com"
+    },
+    {
+      "key": "patientPassword",
+      "value": "local-demo-password-2026"
+    },
+    {
+      "key": "patientId",
+      "value": ""
+    },
+    {
+      "key": "doctorId",
+      "value": ""
+    },
+    {
+      "key": "csrfHeader",
+      "value": "X-CSRF-TOKEN"
+    },
+    {
+      "key": "csrfToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Get CSRF before registration",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/auth/csrf",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) { const d = pm.response.json(); pm.collectionVariables.set(\"csrfHeader\", d.headerName); pm.collectionVariables.set(\"csrfToken\", d.token); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Register patient",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/register",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Demo Patient\",\n  \"email\": \"{{patientEmail}}\",\n  \"password\": \"{{patientPassword}}\",\n  \"phoneNumber\": \"0000000000\",\n  \"role\": \"PATIENT\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "3. Login patient",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/login",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{patientEmail}}\",\n  \"password\": \"{{patientPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) { const d = pm.response.json(); pm.collectionVariables.set(\"patientId\", d.patientId); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Refresh CSRF after login",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/auth/csrf",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) { const d = pm.response.json(); pm.collectionVariables.set(\"csrfHeader\", d.headerName); pm.collectionVariables.set(\"csrfToken\", d.token); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. List doctors",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/doctors",
+        "description": ""
+      }
+    },
+    {
+      "name": "6. Book selected doctor",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/appointments",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"doctorId\": \"{{doctorId}}\",\n  \"priority\": \"NORMAL\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "7. My appointments",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/appointments/patient/{{patientId}}",
+        "description": ""
+      }
+    },
+    {
+      "name": "8. Logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "{{csrfHeader}}",
+            "value": "{{csrfToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/logout",
+        "description": ""
+      }
+    }
+  ]
+}
