@@ -1,12 +1,14 @@
 package com.shqms.dto.request;
 
 import com.shqms.enums.PriorityType;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 public class AppointmentRequest {
 
-    private Long patientId;
-    private Long doctorId;
-    private PriorityType priority;
+    @NotNull @Positive private Long patientId;
+    @NotNull @Positive private Long doctorId;
+    @NotNull private PriorityType priority;
 
     public AppointmentRequest() {
     }

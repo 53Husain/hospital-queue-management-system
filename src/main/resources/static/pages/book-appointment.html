@@ -1,41 +1,33 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Book Appointment</title>
-
     <link rel="stylesheet" href="/css/style.css">
-
 </head>
-
 <body>
-
-<div class="container">
-
+<main class="container">
     <h1>Book Appointment</h1>
-
-    <select id="priority">
-
-        <option>NORMAL</option>
-
-        <option>EMERGENCY</option>
-
-    </select>
-
-    <br><br>
-
-    <button onclick="bookAppointment()">
-
-        Book
-
-    </button>
-
-</div>
-
+    <p>Choose your doctor and appointment priority.</p>
+    <form id="bookingForm" class="card">
+        <label for="doctor">Doctor</label><br>
+        <select id="doctor" required disabled>
+            <option value="">Loading doctors…</option>
+        </select><br>
+        <label for="priority">Priority</label><br>
+        <select id="priority" required>
+            <option value="NORMAL">Normal</option>
+            <option value="EMERGENCY">Emergency</option>
+        </select><br>
+        <button id="bookButton" type="submit" disabled>Book appointment</button>
+        <p id="bookingMessage" role="status" aria-live="polite"></p>
+    </form>
+    <p><a href="/pages/my-appointments.html">My appointments</a> ·
+       <a href="/pages/doctors.html">Choose another doctor</a> ·
+       <a href="/pages/patient-dashboard.html">Patient dashboard</a></p>
+</main>
 <script src="/js/api.js"></script>
 <script src="/js/book.js"></script>
-
 </body>
-
 </html>

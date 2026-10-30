@@ -2,7 +2,7 @@
 
 A Java backend and Bootstrap frontend demonstrating patient registration, doctor queues, appointments, and admin dashboard statistics. Built with **Java 21, Spring Boot 3.5.4, Spring Data JPA, and MySQL**.
 
-**Status:** a learning/demo application with BCrypt password hashing, server-side session authentication, CSRF protection, and role/record-ownership checks. These controls do not make this a production healthcare system. Use synthetic patient data; operational security, privacy requirements, and concurrency behavior need further work.
+**Status:** a learning/demo application with BCrypt password hashing, server-side session authentication, CSRF protection, and role/record-ownership checks. These controls do not make this a production healthcare system. Use synthetic patient data; operational security, privacy requirements, and deployment hardening need further work.
 
 ## Implemented Capabilities
 
@@ -157,7 +157,7 @@ To create a doctor, log in as the bootstrapped administrator in an API client. P
 
 Then use separate patient and doctor sessions (separate browser profiles or cookie jars):
 
-1. As the patient, list doctors with `GET /api/doctors` and book from the patient dashboard.
+1. As the patient, list doctors with `GET /api/doctors` and book from the patient dashboard or standalone `/pages/book-appointment.html` form.
 2. An API booking uses `POST /api/appointments` with the logged-in patient's `patientId`, a real `doctorId`, and `priority` (`NORMAL` or `EMERGENCY`). Another patient's ID is rejected.
 3. As the assigned doctor, read `/api/queue/{doctorId}`, POST `/api/queue/next/{doctorId}`, then PUT `/api/queue/complete/{appointmentId}`.
 4. As the administrator, read `/api/admin/dashboard` for aggregate counts.
@@ -184,7 +184,7 @@ Then use separate patient and doctor sessions (separate browser profiles or cook
 | PUT | `/api/queue/complete/{appointmentId}` | Assigned doctor |
 | GET / PUT | `/api/patient/profile/{patientId}` | Owning patient |
 
-Unauthenticated protected requests return 401; missing/invalid CSRF or forbidden access returns 403. Authentication validation failures return 400, duplicate registration email returns 409, and invalid credentials return a generic 401 message. Other business-error responses are not yet standardized.
+Unauthenticated protected requests return 401; missing/invalid CSRF or forbidden access returns 403. Authentication validation failures return 400, duplicate registration email returns 409, and invalid credentials return a generic 401 message. Booking requires positive patient/doctor IDs and a priority (400 for invalid input). Queue conflicts return 409: an active consultation, an empty queue, or completion of an appointment that is not IN_PROGRESS. Missing records in booking/transition services return 404; ownership checks can reject inaccessible records with 403 first. Other business-error responses are not yet standardized.
 
 ## Existing Accounts and Deployment Changes
 
@@ -197,20 +197,32 @@ Unauthenticated protected requests return 401; missing/invalid CSRF or forbidden
 
 The queue service rebuilds a Java `PriorityQueue` from database appointments for each operation. Calling next selects a BOOKED appointment and sets it to IN_PROGRESS after checking for an existing consultation. Queue lists include BOOKED and IN_PROGRESS; position considers BOOKED only and returns `-1` for appointments outside that set.
 
-Completion still sets COMPLETED without checking the prior status. Tokens use the doctor's historical appointment count plus one; estimated wait uses that count multiplied by 15 minutes. Concurrent booking/call-next requests have no explicit locking. These scheduling issues are separate from the authentication changes.
+Booking, call-next, and completion run in transactions and acquire the same database row lock for their doctor. Locking reads see the latest committed queue/token state even under an older MySQL transaction snapshot. Calls for the same doctor wait until the preceding transaction commits or rolls back. Only BOOKED → IN_PROGRESS → COMPLETED is supported by these operations; a second active consultation and invalid/repeated completion return 409. Different doctors can advance independently.
 
-The doctor dashboard polls every five seconds; this is not WebSocket push. The separate queue-status script loads once. The separate book-appointment page still references an empty `book.js`; use the patient dashboard's booking controls. Broader request validation, rate limiting, password recovery, database migrations, and production deployment hardening remain future work.
+Tokens use the doctor's largest existing token plus one, allocated while holding the lock. Estimated wait still uses the historical appointment count multiplied by 15 minutes: it is not a live queue estimate, and tokens do not reset daily. The locks protect these service paths, not direct SQL writers. Lock failures roll back; there is no automatic retry. No schema migration is required, but existing duplicate tokens or multiple active consultations are not automatically repaired.
+
+The standalone booking form loads doctors, preserves a valid doctor selection, submits through the session/CSRF helper, displays the returned token, and reports errors inline. It prevents duplicate clicks while pending and after success on that page; the API does not provide idempotency keys for retries after an uncertain network outcome.
+
+The doctor dashboard polls every five seconds, enables completion only for IN_PROGRESS rows, and reports transition conflicts. This is not WebSocket push. The separate queue-status script loads once. Broader request validation, rate limiting, password recovery, database migrations, accurate wait estimation, and production deployment hardening remain future work.
 
 ## Tests and Verification
 
+JDK 21 and Maven are required. The full verification additionally requires Docker and access to pull the MySQL 8.4 Testcontainers image.
+
 ```sh
+# H2 authentication/ownership and bootstrap tests; no Docker required
+mvn test
+# Includes MySQL concurrency integration tests and packaging
 mvn clean verify
+# Mocked DOM/HTTP tests for request helper, booking and doctor dashboard
 node --test src/test/js/*.test.cjs
 ```
 
-Java integration tests start Spring Boot with the real security filters, controllers, services and JPA repositories, using an isolated **H2 database in MySQL mode**. They cover password hashing, patient-only registration, privileged staff creation, validation, bad/legacy credentials, CSRF, session rotation/logout, patient ownership, and doctor assignment. Bootstrap tests cover first-admin behavior. Browser-helper tests use Node's test runner and mocked HTTP responses; they are not a rendered-browser end-to-end test.
+Authentication integration tests use the real Spring Security filters, controllers, services and JPA repositories with an isolated **H2 database in MySQL mode**. They cover password hashing, patient-only registration, privileged staff creation, validation, bad/legacy credentials, CSRF, session rotation/logout, patient ownership, and doctor assignment. Bootstrap tests cover first-admin behavior.
 
-[Java CI](.github/workflows/ci.yml) runs Java 21 Maven verification/packaging and browser-helper tests on pushes and pull requests. H2 does not establish MySQL-specific behavior or production readiness. A live MySQL/browser deployment has not been verified in this update.
+`QueueConcurrencyIT` uses **MySQL 8.4 in Docker**, separate transactions and coordinated concurrent workers. It covers simultaneous next/completion requests, completion-versus-next serialization, stale transaction snapshots, rollback, emergency/FIFO ordering, invalid transitions, concurrent token allocation, independent doctors, and HTTP booking/transition contracts.
+
+[Java CI](.github/workflows/ci.yml) runs Maven verification/packaging and Node tests on pushes and pull requests, and uploads both unit and integration test reports. Node tests use mocked DOM/HTTP responses; they are not rendered-browser end-to-end tests. These tests do not establish production readiness, and a deployed browser-to-MySQL workflow has not been verified in this update.
 
 The screenshots below are historical repository images, retained without regeneration. In particular, registration now permits only patients; the old role selector is no longer present.
 

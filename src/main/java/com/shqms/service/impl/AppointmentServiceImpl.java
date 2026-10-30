@@ -11,6 +11,9 @@ import com.shqms.repository.DoctorRepository;
 import com.shqms.repository.PatientRepository;
 import com.shqms.service.AppointmentService;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import com.shqms.dto.response.AppointmentDetailsResponse;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,29 +39,39 @@ public class AppointmentServiceImpl
     }
 
     @Override
+    @Transactional
     public AppointmentResponse bookAppointment(
             AppointmentRequest request) {
+
+        if (request.getPatientId() == null || request.getPatientId() <= 0
+                || request.getDoctorId() == null || request.getDoctorId() <= 0
+                || request.getPriority() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Patient, doctor and priority are required");
+        }
+
+        doctorRepository.lockQueue(request.getDoctorId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Doctor not found"));
 
         Patient patient =
                 patientRepository.findById(request.getPatientId())
                         .orElseThrow(() ->
-                                new RuntimeException("Patient not found"));
+                                new ResponseStatusException(HttpStatus.NOT_FOUND, "Patient not found"));
 
         Doctor doctor =
                 doctorRepository.findById(request.getDoctorId())
                         .orElseThrow(() ->
-                                new RuntimeException("Doctor not found"));
+                                new ResponseStatusException(HttpStatus.NOT_FOUND, "Doctor not found"));
 
-        long count =
-                appointmentRepository.countByDoctorId(
-                        doctor.getId());
+        List<Integer> tokens = appointmentRepository.findTokensForUpdate(doctor.getId());
+        int nextToken = Math.addExact(tokens.stream().filter(java.util.Objects::nonNull)
+                .mapToInt(Integer::intValue).max().orElse(0), 1);
 
         Appointment appointment = new Appointment();
 
         appointment.setPatient(patient);
         appointment.setDoctor(doctor);
 
-        appointment.setTokenNumber((int) count + 1);
+        appointment.setTokenNumber(nextToken);
 
         appointment.setPriority(request.getPriority());
 
@@ -69,7 +82,7 @@ public class AppointmentServiceImpl
                 LocalDateTime.now());
 
         appointment.setEstimatedWaitingTime(
-                ((int) count) * 15);
+                tokens.size() * 15);
 
         appointment =
                 appointmentRepository.save(appointment);

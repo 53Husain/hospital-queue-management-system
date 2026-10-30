@@ -6,8 +6,14 @@ import com.shqms.dsa.queue.QueueManager;
 import com.shqms.entity.Appointment;
 import com.shqms.enums.AppointmentStatus;
 import com.shqms.repository.AppointmentRepository;
+import com.shqms.repository.DoctorRepository;
 import com.shqms.service.QueueService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,31 +22,40 @@ import java.util.List;
 public class QueueServiceImpl implements QueueService {
 
     private final AppointmentRepository appointmentRepository;
+    private final DoctorRepository doctorRepository;
+    private final EntityManager entityManager;
 
     public QueueServiceImpl(
-            AppointmentRepository appointmentRepository) {
+            AppointmentRepository appointmentRepository,
+            DoctorRepository doctorRepository,
+            EntityManager entityManager) {
         this.appointmentRepository = appointmentRepository;
+        this.doctorRepository = doctorRepository;
+        this.entityManager = entityManager;
     }
 
     @Override
+    @Transactional
     public QueueResponse callNextPatient(Long doctorId) {
+
+        lockDoctor(doctorId);
 
         // Check if a patient is already being consulted
         List<Appointment> inProgressAppointments =
-                appointmentRepository.findByDoctorIdAndStatus(
+                appointmentRepository.findQueueForUpdate(
                         doctorId,
                         AppointmentStatus.IN_PROGRESS
                 );
 
         if (!inProgressAppointments.isEmpty()) {
-            throw new RuntimeException(
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Please complete the current appointment before calling the next patient."
             );
         }
 
         // Get all booked appointments
         List<Appointment> appointments =
-                appointmentRepository.findByDoctorIdAndStatus(
+                appointmentRepository.findQueueForUpdate(
                         doctorId,
                         AppointmentStatus.BOOKED
                 );
@@ -52,10 +67,13 @@ public class QueueServiceImpl implements QueueService {
         }
 
         if (queue.isEmpty()) {
-            throw new RuntimeException("No patients in queue");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "No patients in queue");
         }
 
         Appointment nextPatient = queue.poll();
+
+        // Ownership checks/earlier reads may already have cached this entity.
+        entityManager.refresh(nextPatient, LockModeType.PESSIMISTIC_WRITE);
 
         nextPatient.setStatus(AppointmentStatus.IN_PROGRESS);
 
@@ -148,20 +166,40 @@ public class QueueServiceImpl implements QueueService {
     }
 
     @Override
+    @Transactional
     public void completeAppointment(Long appointmentId) {
+
+        // Read only the immutable doctor ID before taking the doctor lock.
+        // Always acquire doctor -> appointment, never the reverse.
+        Long doctorId = appointmentRepository.findDoctorId(appointmentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+        lockDoctor(doctorId);
 
         Appointment appointment =
                 appointmentRepository.findById(appointmentId)
                         .orElseThrow(
-                                () -> new RuntimeException(
+                                () -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                         "Appointment not found"
                                 )
                         );
+
+        entityManager.refresh(appointment, LockModeType.PESSIMISTIC_WRITE);
+        if (appointment.getStatus() != AppointmentStatus.IN_PROGRESS) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Only an in-progress appointment can be completed");
+        }
 
         appointment.setStatus(
                 AppointmentStatus.COMPLETED
         );
 
         appointmentRepository.save(appointment);
+    }
+
+    private void lockDoctor(Long doctorId) {
+        // Keep earlier changes if several service calls share one transaction.
+        entityManager.flush();
+        doctorRepository.lockQueue(doctorId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Doctor not found"));
     }
 }
