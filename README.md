@@ -2,6 +2,8 @@
 
 **Quick start:** [Local MySQL with Docker Compose + Maven Wrapper](docs/local-setup.md) · [Postman API examples](docs/api-examples.md)
 
+Commands below use `./mvnw` on Linux/macOS; use `.\mvnw.cmd` on Windows PowerShell.
+
 A Java backend and Bootstrap frontend demonstrating patient registration, doctor queues, appointments, and admin dashboard statistics. Built with **Java 21, Spring Boot 3.5.4, Spring Data JPA, and MySQL**.
 
 **Status:** a learning/demo application with BCrypt password hashing, server-side session authentication, CSRF protection, and role/record-ownership checks. These controls do not make this a production healthcare system. Use synthetic patient data; operational security, privacy requirements, and deployment hardening need further work.
@@ -84,7 +86,7 @@ PowerShell:
 $env:APP_BOOTSTRAPADMIN_ENABLED = 'true'
 $env:APP_BOOTSTRAPADMIN_EMAIL = 'admin@example.com'
 $env:APP_BOOTSTRAPADMIN_PASSWORD = 'REPLACE_WITH_A_UNIQUE_PASSWORD'
-./mvnw spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
 
 Bash:
@@ -209,7 +211,7 @@ The doctor dashboard polls every five seconds, enables completion only for IN_PR
 
 ## Tests and Verification
 
-JDK 21 and Maven are required. The full verification additionally requires Docker and access to pull the MySQL 8.4 Testcontainers image.
+JDK 21 is required; Maven is downloaded by the included wrapper. The full verification additionally requires Docker and access to pull the MySQL 8.4 Testcontainers image.
 
 ```sh
 # H2 authentication/ownership and bootstrap tests; no Docker required
