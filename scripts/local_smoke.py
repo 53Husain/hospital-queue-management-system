@@ -110,6 +110,11 @@ def main():
                     raise RuntimeError('Application exited; see .smoke/application.log')
                 try:
                     Client().call('GET', path)
+                    # HTTP starts before ApplicationRunner finishes first-admin setup.
+                    # Wait for that setup too, within the same bounded startup deadline.
+                    Client().call('POST', '/api/auth/login',
+                                  {'email': 'ci-admin@example.com',
+                                   'password': 'ci-demo-password-2026'}, csrf=True)
                     break
                 except (OSError, AssertionError):
                     if time.monotonic() >= deadline:
